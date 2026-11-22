@@ -1,22 +1,16 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, mixins, permissions, viewsets
+from rest_framework import filters, permissions, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 
 from posts.models import Group, Post
-
-from .permissions import IsAuthorOrReadOnly
+from .permissions import IsAuthenticatedAuthorOrReadOnly
 from .serializers import (
     CommentSerializer,
     FollowSerializer,
     GroupSerializer,
     PostSerializer,
 )
-
-
-class CreateListViewSet(
-    mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
-):
-    """Базовый вьюсет только для создания и получения списка."""
+from .viewsets import CreateListViewSet
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -24,7 +18,7 @@ class PostViewSet(viewsets.ModelViewSet):
 
     queryset = Post.objects.select_related('author', 'group')
     serializer_class = PostSerializer
-    permission_classes = (IsAuthorOrReadOnly,)
+    permission_classes = (IsAuthenticatedAuthorOrReadOnly,)
     pagination_class = LimitOffsetPagination
 
     def perform_create(self, serializer):
@@ -33,17 +27,18 @@ class PostViewSet(viewsets.ModelViewSet):
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
-    """Группы доступны только для чтения."""
+    """Группы доступны только для чтения любому пользователю."""
 
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
+    permission_classes = (permissions.AllowAny,)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     """Комментарии к посту, id которого передан в адресе."""
 
     serializer_class = CommentSerializer
-    permission_classes = (IsAuthorOrReadOnly,)
+    permission_classes = (IsAuthenticatedAuthorOrReadOnly,)
 
     def get_post(self):
         # Если поста нет, сразу отдаю 404.
